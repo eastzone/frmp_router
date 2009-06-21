@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nf:project xmlns:nf="http://www.NetFPGA.org/NF2_register_system" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.NetFPGA.org/NF2_register_system NF2_register_system.xsd ">
+  <nf:name>cs344_starter</nf:name>
+  <nf:description>CS344 Starter</nf:description>
+  <nf:use_modules>
+    core/io_queues/cpu_dma_queue
+    core/io_queues/ethernet_mac
+    core/nf2/generic_top
+    core/nf2/reference_core
+    core/output_queues/sram_rr_output_queues
+    core/sram_arbiter/sram_weighted_rr
+    core/user_data_path/reference_user_data_path
+    core/user_data_path/udp_reg_master
+    core/io/mdio
+    core/cpci_bus
+    core/dma
+    core/io_queues/add_rm_hdr
+    core/strip_headers/keep_length
+    core/utils
+    core/utils/generic_regs
+  </nf:use_modules>
+  <nf:local_modules>    
+  </nf:local_modules>
+  <nf:memalloc layout="reference">
+    <nf:group name="core1">
+      <nf:instance name="device_id" />
+      <nf:instance name="dma" base="0x0500000"/>
+      <nf:instance name="mdio" />
+      <nf:instance name="nf2_mac_grp" count="4" />
+      <nf:instance name="cpu_dma_queue" count="4" />
+    </nf:group>
+    <nf:group name="udp">
+      <nf:instance name="in_arb" />
+      <nf:instance name="router_op_lut" />
+      <nf:instance name="strip_headers" />
+      <nf:instance name="output_queues" />
+    </nf:group>
+  </nf:memalloc>
+</nf:project>

@@ -1,0 +1,185 @@
+#!/usr/bin/perl -w
+###############################################################################
+#
+# File:         pvp
+# RCS:          $Header: /tt1/cvsroot/ttx/bin/pvp,v 1.15 1999/08/06 07:16:27 tomk Exp $
+# Description:  Perl verilog preprocessor
+# Author:       Costas Calamvokis
+# Created:      Wed May 20 14:00:52 1998
+# Modified:     Fri Aug  6 00:16:03 1999 (Tom Kraljevic) tomk@titanic.Abrizio.COM
+# Language:     Perl
+# Package:      N/A
+# Status:       Experimental (Do Not Distribute)
+#
+# Copyright (c) 1998, 1999 Costas Calamvokis, all rights reserved.
+#
+###############################################################################
+
+use POSIX;                      # for floor, ceil etc
+local $SIG{__WARN__} = sub { }; # ignore warnings from eval
+
+@verilog_compiler_keywords = qw( celldefine define delay_mode_path
+ disable_portfaults else enable_portfaults endcelldefine endif ifdef
+ include nosuppress_faults suppress_faults timescale undef resetall );
+@verilog_compiler_keywords_hash{@verilog_compiler_keywords} = 
+    "" x @verilog_compiler_keywords;
+
+process_args();
+
+usage("No input file name specified\n") unless $pvp_in_file;
+# cut off the initial path and replace .pvp with .v
+($pvp_out_file=$pvp_in_file) =~  s|(^.*/)?(.*).pvp$|$2.v| unless $pvp_out_file;
+
+open(PVP_OUT_FILE,">$pvp_out_file") || die "Couldn't open $pvp_out_file to write";
+$pvp_out_line=1;
+eval get_src($pvp_in_file,"");
+print STDERR map_errors($@) if ($@);
+
+exit;
+
+######################### subroutines ############################################
+
+# process the command line
+sub process_args {
+    $pvp_no_line_numbers = 0;
+    $pvp_no_warn = 1;
+    $pvp_in_file = $pvp_out_file = '';
+    @inc_path=();
+    while ($_ = shift @ARGV) {
+	if ( m/^-e$/ ) {
+	    eval shift @ARGV;
+	    print STDERR cmd_errors($@) if ($@);
+	}
+	elsif ( m/^-l$/ ) {	$pvp_no_line_numbers = 1;    }
+	elsif ( m/^\+w$/ ) {	$pvp_no_warn = 0;    }
+	elsif ( m/^-o$/ ) {	usage() unless $pvp_out_file = shift @ARGV; }
+	elsif ( m/^\+incdir\+(.*)$/ ) { push(@inc_path,$1); }
+	else              { 
+	    usage() if $pvp_in_file; # already been specified
+	    $pvp_in_file = $_; 
+	    usage("Input name $_ didn't end in .pvp") unless (m/\.pvp$/) 
+	}
+    }
+}
+
+# print usage and exit
+sub usage {
+    my ($msg) = @_;
+    print STDERR $msg if (defined($msg));
+    print STDERR "Usage:\n";
+    print STDERR " pvp [-l] [+w] [-o outfile.v] [-e perl_expression] [+incdir+idir] infile.pvp\n\n";
+    exit;
+}
+
+
+# Read the code into an string and return it transformed:
+#  - lines starting `pvp are stripped of the `pvp (leaving just perl code)
+#  - lines saying `pvp include "filename" cause filename to be read
+#  - other lines are assumed to be verilog and turned into calls to print_sub
+sub get_src{
+    my ($file,$msg) = @_;
+    my ($src,$input_line,$path_and_file);
+    local (*F);
+
+    $input_line=1; 
+
+    $path_and_file=search_inc($file,$msg);
+    open(F,"< $path_and_file") || die "Couldn't read $path_and_file";
+    while (<F>) {
+	if ( m/^\s*\`pvp/ ) {
+	    s/^\s*\`pvp//;           # remove `pvp from line
+	    s|//|\#|;                # turn verilog // comments into perl comments
+	    if ( m/^\s+include\s*"(.*)"/ ) {  
+		$src .= get_src($1,"included from $file line $input_line"); 
+	    }
+	    else {  
+		$src .= $_;          
+	    }
+	    $pvp_map[$pvp_out_line++]=$file.':'.$input_line;
+	}
+	else {
+	    s/'/\\'/g;                         # escape single quotes
+            # add line numbers to non blank lines for tracing back errors
+	    #  (also don't add them to lines containing the word sysnopsys
+	    #   because this confuses "synopsys parallel_case" pragmas)
+	    s|\n| //$input_line\n| unless ( m/(^\s*$)|(synopsys)/ || $pvp_no_line_numbers ); 
+	    $src .= "&print_sub('".$_."');\n";
+	    $pvp_map[$pvp_out_line++]=$file.':'.$input_line;  # this takes 2 lines
+	    $pvp_map[$pvp_out_line++]=$file.':'.$input_line;  #   to print one
+	}
+	$input_line++;
+    }
+    $pvp_map[$pvp_out_line++]=$file.':'.$input_line; # for EOF reporting
+    $pvp_map[$pvp_out_line++]=$file.':'.$input_line; # for EOF reporting
+    return $src;
+}
+
+# eval returns errors in terms of it's input - this maps them back to the file
+#  and line they came from
+sub map_errors {
+    my ($error) = @_;
+    my ($out);
+
+    $out = $error;
+    while ($error =~ m/line ([0-9]+)/g) {   # find all the error lines and remap them
+	$input_line=$pvp_map[$1];
+	$out =~ s/line $1/line $input_line/g;
+    }
+    $out =~ s/^  \(Might be a runaway multi-line.*?\n//gm; # invariably not!
+    $out =~ s/\(eval [0-9]+\) //g;     # don't want to know about eval!
+    $out =~ s/, near ".*?"//gs;   # near message is confusing
+    return $out;
+}
+
+# Rearrange command line errors to make them more informative
+sub cmd_errors {
+    my ($error) = @_;
+
+    $error =~ s/\(eval ([0-9]+)\)/-e number $1/g;
+    $error =~ s/line 1, //g;
+    return $error;
+}
+
+# this is called from within the generated code to print a line of verilog
+sub print_sub {
+    my ($pvp_in)  = @_;
+    my (%subst);
+
+    $pvp_in =~ s/\[\[\[(.*?)\]\]\]/eval($1)/gse;
+
+
+    while ( $pvp_in =~ m/\`([A-Za-z_][A-Za-z_0-9\$]*|\\\\\S+)/gs ) {
+	if ( defined($$1) ) {
+	    $subst{$1} = $$1;
+	}
+	else {
+	    # later I'll have to cope with 'define
+	    print STDERR "Warning: $1 is not known to pvp. Skipping substitution.\n"
+		unless ($pvp_no_warn || 
+			exists($verilog_compiler_keywords_hash{$1}) || exists($warned{$1}));
+	    $warned{$1}=1;
+	}
+    }
+    # make sure that substitutions are done in order: eg: 'ii is done before `i
+    foreach $s (reverse sort keys %subst) {
+	$pvp_in =~ s/\`$s(::)?/$subst{$s}/gm;
+    }
+    print PVP_OUT_FILE $pvp_in;
+}
+
+# seach the include path for a file
+sub search_inc {
+    my ($file,$msg) = @_;
+    my ($p);
+
+    foreach $p ("./$file", $file) {
+	if ( -r $p ) { return $p; }
+    }
+
+    foreach $p (@inc_path) {
+	if ( -r "$p/$file" ) { return "$p/$file"; }
+    }
+
+    print STDERR "Couldn't read file $file $msg\n";
+    exit;
+}

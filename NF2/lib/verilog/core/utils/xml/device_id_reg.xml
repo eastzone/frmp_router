@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nf:module xmlns:nf="http://www.NetFPGA.org/NF2_register_system" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.NetFPGA.org/NF2_register_system NF2_register_system.xsd ">
+	<nf:name>device_id</nf:name>
+	<nf:prefix>dev_id</nf:prefix>
+	<nf:location>core</nf:location>
+	<nf:description>Device identification</nf:description>
+	<nf:blocksize>256k</nf:blocksize>
+	<nf:force_base>0x0400000</nf:force_base>
+	<nf:registers>
+		<nf:register>
+			<nf:name>md5</nf:name>
+			<nf:description>MD5 hash identifying the module</nf:description>
+			<nf:type>md5sum</nf:type>
+		</nf:register>
+		<nf:register>
+			<nf:name>device_id</nf:name>
+			<nf:description>Device identification -- this should
+				be unique across all projects</nf:description>
+			<nf:width>32</nf:width>
+		</nf:register>
+		<nf:register>
+			<nf:name>revision</nf:name>
+			<nf:description>Device revision -- revision number of
+				the build</nf:description>
+			<nf:width>32</nf:width>
+		</nf:register>
+		<nf:register>
+			<nf:name>cpci_id</nf:name>
+			<nf:description>CPCI version that this project was
+				built against</nf:description>
+			<nf:width>32</nf:width>
+		</nf:register>
+		<nf:register>
+			<nf:name>dev_str</nf:name>
+			<nf:description>Description of the project
+				(null-terminated string)</nf:description>
+			<nf:type>dev_str</nf:type>
+		</nf:register>
+	</nf:registers>
+	<nf:constants>
+		<nf:constant>
+			<nf:name>NUM_REGS</nf:name>
+			<nf:description>Total number of registers</nf:description>
+			<nf:value>32</nf:value>
+		</nf:constant>
+		<nf:constant>
+			<nf:name>NON_DEV_STR_REGS</nf:name>
+			<nf:description>Number of non string registers</nf:description>
+			<nf:value>(MD5SUM_LENGTH/32) + 3</nf:value>
+		</nf:constant>
+		<nf:constant>
+			<nf:name>DEV_STR_WORD_LEN</nf:name>
+			<nf:description>Device description length (in words,
+				not chars)</nf:description>
+			<nf:value>NUM_REGS - NON_DEV_STR_REGS</nf:value>
+		</nf:constant>
+		<nf:constant>
+			<nf:name>DEV_STR_BYTE_LEN</nf:name>
+			<nf:description>Device description length (in bytes/chars)</nf:description>
+			<nf:value>DEV_STR_WORD_LEN * 4</nf:value>
+		</nf:constant>
+		<nf:constant>
+			<nf:name>DEV_STR_BIT_LEN</nf:name>
+			<nf:description>Device description length (in bits)</nf:description>
+			<nf:value>DEV_STR_BYTE_LEN * 8</nf:value>
+		</nf:constant>
+		<nf:constant>
+			<nf:name>MD5SUM_LENGTH</nf:name>
+			<nf:description>Length of MD5 sum (bits)</nf:description>
+			<nf:value>128</nf:value>
+		</nf:constant>
+		<nf:constant>
+			<nf:name>MD5_VALUE</nf:name>
+			<nf:description>MD5 sum of the string "device_id.v"</nf:description>
+			<nf:width>MD5SUM_LENGTH</nf:width>
+			<nf:value>0x4071736d8a603d2b4d55f62989a73c95</nf:value>
+		</nf:constant>
+	</nf:constants>
+	<nf:types>
+		<nf:type xsi:type="nf:SimpleType">
+			<nf:name>md5sum</nf:name>
+			<nf:description>MD5 sum identifying the block</nf:description>
+			<nf:width>128</nf:width>
+		</nf:type>
+		<nf:type xsi:type="nf:SimpleType">
+			<nf:name>dev_str</nf:name>
+			<nf:description>Description of the project (null-terminated string)</nf:description>
+			<nf:width>DEV_STR_BIT_LEN</nf:width>
+		</nf:type>
+	</nf:types>
+</nf:module>
