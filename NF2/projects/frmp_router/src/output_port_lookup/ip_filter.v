@@ -34,13 +34,13 @@
    endfunction // log2
 
    //------------------ Internal Parameter ---------------------------
-   parameter NUM_STATES		                    = 8;
-   parameter ST_WAIT_FOR_REQ                        = 8'd1;
-   parameter ST_SEARCH	                            = 8'd2;
+   parameter NUM_STATES		                    = 3;
+   parameter ST_WAIT_FOR_REQ                        = 3'd1;
+   parameter ST_SEARCH	                            = 3'd2;
 
-   parameter ST_REG_WAIT_FOR_REQ		    = 8'd1;
-   parameter ST_REG_READ_FROM_TABLE		    = 8'd2;
-   parameter ST_REG_WRITE_TO_TABLE		    = 8'd4;   
+   parameter ST_REG_WAIT_FOR_REQ		    = 3'd1;
+   parameter ST_REG_READ_FROM_TABLE		    = 3'd2;
+   parameter ST_REG_WRITE_TO_TABLE		    = 3'd4;   
 
    //---------------------- Wires/Regs -------------------------------
    reg [4:0]				table_addr, table_addr_next;

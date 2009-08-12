@@ -102,6 +102,7 @@
    reg  [7:0]				port_position, port_position_start, port_position_next, port_position_start_next;
    wire	[7:0]				port_position_hit;
    reg					first_time, first_time_next;
+   reg [7:0]				local_eth_link_status;
 
    //----------------------- Modules ---------------------------------
   sync_64x128_table
@@ -142,7 +143,7 @@
 
    //------------------------ Logic ----------------------------------
    assign matched = (masked_entry == masked_searchkey) && (masked_entry!=32'b0);
-   assign port_position_hit = fast_reroute_enable ? (port_position & port) & eth_link_status : port_position & port;
+   assign port_position_hit = fast_reroute_enable ? (port_position & port) & local_eth_link_status : port_position & port;
 
    always @(*) begin
       table_addr_next		= table_addr;
@@ -336,6 +337,8 @@
 
 	 port_position 		<= 8'h1;
 	 port_position_start 	<= 8'h1;
+
+	 local_eth_link_status	<= 0;
       end
       else begin
 	 table_addr 		<= table_addr_next;
@@ -355,6 +358,8 @@
       	 port_position 		<= port_position_next;
 	 port_position_start 	<= port_position_start_next;
 	 first_time 		<= first_time_next;
+
+	 local_eth_link_status	<= eth_link_status;
       end
    end
 
